@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Personal Finance Tracker</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div id="app">
+    <!-- Auth Section (shown when not logged in) -->
+    <div id="auth-section" class="auth-container">
+      <div class="auth-box">
+        <h1>💰 Finance Tracker</h1>
+        <p class="subtitle">Track your income, expenses, and investments</p>
+        
+        <!-- Login Form -->
+        <div id="login-form" class="form-section">
+          <h2>Login</h2>
+          <form onsubmit="handleLogin(event)">
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="login-email" required placeholder="Enter your email">
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="login-password" required placeholder="Enter your password">
+            </div>
+            <button type="submit" class="btn btn-primary">Login</button>
+          </form>
+          <p class="auth-switch">Don't have an account? <a href="#" onclick="showRegister()">Register</a></p>
+          <div class="oauth-divider">
+            <span>or</span>
+          </div>
+          <a href="/api/auth/google" class="btn btn-google">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Sign in with Google
+          </a>
+        </div>
+
+        <!-- Register Form -->
+        <div id="register-form" class="form-section hidden">
+          <h2>Register</h2>
+          <form onsubmit="handleRegister(event)">
+            <div class="form-row">
+              <div class="form-group">
+                <label>First Name</label>
+                <input type="text" id="register-firstname" placeholder="First name">
+              </div>
+              <div class="form-group">
+                <label>Last Name</label>
+                <input type="text" id="register-lastname" placeholder="Last name">
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="register-email" required placeholder="Enter your email">
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" id="register-password" required minlength="6" placeholder="Min 6 characters">
+            </div>
+            <button type="submit" class="btn btn-primary">Register</button>
+          </form>
+          <p class="auth-switch">Already have an account? <a href="#" onclick="showLogin()">Login</a></p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main App Section (shown when logged in) -->
+    <div id="main-section" class="hidden">
+      <!-- Header -->
+      <header class="header">
+        <div class="header-left">
+          <h1>💰 Finance Tracker</h1>
+        </div>
+        <div class="header-right">
+          <span id="user-name"></span>
+          <button onclick="logout()" class="btn btn-outline">Logout</button>
+        </div>
+      </header>
+
+      <!-- Navigation -->
+      <nav class="nav">
+        <button class="nav-btn active" onclick="showSection('dashboard')">Dashboard</button>
+        <button class="nav-btn" onclick="showSection('transactions')">Transactions</button>
+        <button class="nav-btn" onclick="showSection('categories')">Categories</button>
+        <button class="nav-btn" onclick="showSection('budgets')">Budgets</button>
+        <button class="nav-btn" onclick="showSection('reports')">Reports</button>
+      </nav>
+
+      <!-- Dashboard Section -->
+      <section id="dashboard-section" class="section">
+        <div class="dashboard-summary">
+          <div class="summary-card income">
+            <h3>Income</h3>
+            <p id="summary-income">$0.00</p>
+            <span id="income-change" class="change">0%</span>
+          </div>
+          <div class="summary-card expenses">
+            <h3>Expenses</h3>
+            <p id="summary-expenses">$0.00</p>
+            <span id="expenses-change" class="change">0%</span>
+          </div>
+          <div class="summary-card savings">
+            <h3>Savings</h3>
+            <p id="summary-savings">$0.00</p>
+            <span id="savings-rate" class="change">0%</span>
+          </div>
+          <div class="summary-card balance">
+            <h3>Balance</h3>
+            <p id="summary-balance">$0.00</p>
+          </div>
+        </div>
+
+        <div class="charts-container">
+          <div class="chart-box">
+            <h3>Expense Breakdown</h3>
+            <canvas id="expense-chart"></canvas>
+          </div>
+          <div class="chart-box">
+            <h3>Monthly Trend</h3>
+            <canvas id="trend-chart"></canvas>
+          </div>
+        </div>
+
+        <div class="dashboard-lists">
+          <div class="list-box">
+            <h3>Recent Transactions</h3>
+            <div id="recent-transactions"></div>
+          </div>
+          <div class="list-box">
+            <h3>Budget Alerts</h3>
+            <div id="budget-alerts"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Transactions Section -->
+      <section id="transactions-section" class="section hidden">
+        <div class="section-header">
+          <h2>Transactions</h2>
+          <button onclick="showAddTransaction()" class="btn btn-primary">+ Add Transaction</button>
+        </div>
+
+        <div class="filters">
+          <div class="form-group">
+            <label>Type</label>
+            <select id="filter-type" onchange="loadTransactions()">
+              <option value="">All</option>
+              <option value="income">Income</option>
+              <option value="expense">Expense</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Start Date</label>
+            <input type="date" id="filter-start" onchange="loadTransactions()">
+          </div>
+          <div class="form-group">
+            <label>End Date</label>
+            <input type="date" id="filter-end" onchange="loadTransactions()">
+          </div>
+        </div>
+
+        <div id="transactions-list" class="transactions-list"></div>
+        <div id="transactions-pagination" class="pagination"></div>
+      </section>
+
+      <!-- Categories Section -->
+      <section id="categories-section" class="section hidden">
+        <div class="section-header">
+          <h2>Categories</h2>
+          <button onclick="showAddCategory()" class="btn btn-primary">+ Add Category</button>
+        </div>
+
+        <div class="categories-container">
+          <div class="categories-column">
+            <h3>Income Categories</h3>
+            <div id="income-categories"></div>
+          </div>
+          <div class="categories-column">
+            <h3>Expense Categories</h3>
+            <div id="expense-categories"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Budgets Section -->
+      <section id="budgets-section" class="section hidden">
+        <div class="section-header">
+          <h2>Budgets</h2>
+          <button onclick="showAddBudget()" class="btn btn-primary">+ Add Budget</button>
+        </div>
+
+        <div id="budget-progress" class="budget-progress"></div>
+        <div id="budgets-list" class="budgets-list"></div>
+      </section>
+
+      <!-- Reports Section -->
+      <section id="reports-section" class="section hidden">
+        <div class="section-header">
+          <h2>Reports</h2>
+        </div>
+
+        <div class="report-filters">
+          <div class="form-group">
+            <label>Report Type</label>
+            <select id="report-type" onchange="changeReportType()">
+              <option value="monthly">Monthly</option>
+              <option value="yearly">Yearly</option>
+              <option value="custom">Custom Range</option>
+            </select>
+          </div>
+          <div class="form-group" id="report-month-group">
+            <label>Month</label>
+            <select id="report-month"></select>
+          </div>
+          <div class="form-group" id="report-year-group">
+            <label>Year</label>
+            <select id="report-year"></select>
+          </div>
+          <div class="form-group hidden" id="report-start-group">
+            <label>Start Date</label>
+            <input type="date" id="report-start">
+          </div>
+          <div class="form-group hidden" id="report-end-group">
+            <label>End Date</label>
+            <input type="date" id="report-end">
+          </div>
+          <button onclick="generateReport()" class="btn btn-primary">Generate Report</button>
+          <button onclick="exportReport()" class="btn btn-outline">Export CSV</button>
+        </div>
+
+        <div id="report-content" class="report-content"></div>
+      </section>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modal-title">Modal</h3>
+          <button onclick="closeModal()" class="modal-close">&times;</button>
+        </div>
+        <div id="modal-body"></div>
+      </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container"></div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
