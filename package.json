@@ -10,6 +10,7 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "db:migrate": "node src/config/migrate.js",
+    "db:mitigate": "echo 'Skipping migrations during build'",
     "db:seed": "node src/config/seed.js",
     "test": "jest --coverage",
     "test:unit": "jest --testPathPattern=unit",
