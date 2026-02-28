@@ -12,6 +12,7 @@ const categoryRoutes = require('./routes/categories');
 const budgetRoutes = require('./routes/budgets');
 const dashboardRoutes = require('./routes/dashboard');
 const reportRoutes = require('./routes/reports');
+const advancedRoutes = require('./routes/advanced');
 
 // Import database
 const db = require('./config/database');
@@ -51,6 +52,7 @@ app.use('/api/categories', categoryRoutes);
 app.use('/api/budgets', budgetRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api', advancedRoutes);
 
 // Root route - serve the main HTML
 app.get('/', (req, res) => {

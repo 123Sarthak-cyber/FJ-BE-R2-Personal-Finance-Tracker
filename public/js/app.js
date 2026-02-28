@@ -188,6 +188,15 @@ function showSection(sectionName) {
     case 'reports':
       // Don't auto-load, wait for user to generate
       break;
+    case 'ai':
+      loadAIInsights();
+      break;
+    case 'import':
+      // Don't auto-load, wait for user to upload
+      break;
+    case 'anomalies':
+      loadAnomalies();
+      break;
   }
 }
 
@@ -1089,3 +1098,316 @@ function formatDate(dateStr) {
     year: 'numeric'
   });
 }
+
+// ============================================
+// AI Assistant Functions
+// ============================================
+async function loadAIInsights() {
+  const insightsContent = document.getElementById('ai-insights-content');
+  insightsContent.innerHTML = '<div class="ai-content loading"><i class="fas fa-spinner fa-spin"></i> Loading insights...</div>';
+  
+  try {
+    const data = await api('/ai/insights');
+    insightsContent.innerHTML = `<div class="ai-content">${data.insights}</div>`;
+  } catch (error) {
+    insightsContent.innerHTML = `<div class="ai-content">Unable to load insights. ${error.message}</div>`;
+  }
+}
+
+async function getAIReport() {
+  const reportContent = document.getElementById('ai-report-content');
+  reportContent.innerHTML = '<div class="ai-content loading"><i class="fas fa-spinner fa-spin"></i> Generating report...</div>';
+  
+  try {
+    const data = await api('/ai/report');
+    reportContent.innerHTML = `<div class="ai-content">${data.report}</div>`;
+  } catch (error) {
+    reportContent.innerHTML = `<div class="ai-content">Unable to generate report. ${error.message}</div>`;
+  }
+}
+
+async function getAIBudgetRecommendations() {
+  const budgetContent = document.getElementById('ai-budget-content');
+  budgetContent.innerHTML = '<div class="ai-content loading"><i class="fas fa-spinner fa-spin"></i> Analyzing budgets...</div>';
+  
+  try {
+    const data = await api('/ai/budget-recommendations');
+    budgetContent.innerHTML = `<div class="ai-content">${data.recommendations}</div>`;
+  } catch (error) {
+    budgetContent.innerHTML = `<div class="ai-content">Unable to get recommendations. ${error.message}</div>`;
+  }
+}
+
+async function sendAIChat() {
+  const input = document.getElementById('ai-chat-input');
+  const message = input.value.trim();
+  if (!message) return;
+  
+  const chatMessages = document.getElementById('ai-chat-messages');
+  
+  // Add user message
+  chatMessages.innerHTML += `<div class="chat-message user">${escapeHtml(message)}</div>`;
+  input.value = '';
+  
+  // Scroll to bottom
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  
+  // Add loading message
+  const loadingId = 'loading-' + Date.now();
+  chatMessages.innerHTML += `<div class="chat-message assistant" id="${loadingId}"><i class="fas fa-spinner fa-spin"></i> Thinking...</div>`;
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+  
+  try {
+    const data = await api('/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify({ message })
+    });
+    
+    // Replace loading with response
+    document.getElementById(loadingId).innerHTML = data.response;
+  } catch (error) {
+    document.getElementById(loadingId).innerHTML = `Sorry, I encountered an error: ${error.message}`;
+  }
+  
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// ============================================
+// Import Functions
+// ============================================
+function initializeImportSection() {
+  const uploadArea = document.getElementById('upload-area');
+  const fileInput = document.getElementById('file-input');
+  
+  if (!uploadArea || !fileInput) return;
+  
+  // Drag and drop handlers
+  uploadArea.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    uploadArea.classList.add('drag-over');
+  });
+  
+  uploadArea.addEventListener('dragleave', () => {
+    uploadArea.classList.remove('drag-over');
+  });
+  
+  uploadArea.addEventListener('drop', (e) => {
+    e.preventDefault();
+    uploadArea.classList.remove('drag-over');
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileSelect(files[0]);
+    }
+  });
+  
+  uploadArea.addEventListener('click', () => {
+    fileInput.click();
+  });
+  
+  fileInput.addEventListener('change', (e) => {
+    if (e.target.files.length > 0) {
+      handleFileSelect(e.target.files[0]);
+    }
+  });
+}
+
+// Initialize on DOM load
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(initializeImportSection, 500);
+});
+
+let selectedFile = null;
+
+function handleFileSelect(file) {
+  const validTypes = ['text/csv', 'application/pdf', 'application/vnd.ms-excel'];
+  const validExtensions = ['.csv', '.pdf'];
+  
+  const extension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+  
+  if (!validExtensions.includes(extension)) {
+    showToast('Please upload a CSV or PDF file', 'error');
+    return;
+  }
+  
+  selectedFile = file;
+  const uploadArea = document.getElementById('upload-area');
+  uploadArea.innerHTML = `
+    <i class="fas fa-file-check"></i>
+    <p><strong>${file.name}</strong></p>
+    <span>${(file.size / 1024).toFixed(2)} KB</span>
+  `;
+  
+  showToast('File selected. Click "Import Statement" to process.', 'success');
+}
+
+async function importStatement() {
+  if (!selectedFile) {
+    showToast('Please select a file first', 'error');
+    return;
+  }
+  
+  const formData = new FormData();
+  formData.append('statement', selectedFile);
+  
+  const resultsDiv = document.getElementById('import-results');
+  resultsDiv.innerHTML = '<p style="text-align: center;"><i class="fas fa-spinner fa-spin"></i> Processing...</p>';
+  
+  try {
+    const response = await fetch(`${API_URL}/import/statement`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      },
+      body: formData
+    });
+    
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.message || 'Import failed');
+    }
+    
+    const { imported, duplicates, errors, transactions } = data;
+    
+    resultsDiv.innerHTML = `
+      <h3>Import Results</h3>
+      <div class="import-stats">
+        <div class="import-stat success">
+          <div class="stat-value">${imported}</div>
+          <div class="stat-label">Imported</div>
+        </div>
+        <div class="import-stat duplicate">
+          <div class="stat-value">${duplicates}</div>
+          <div class="stat-label">Duplicates</div>
+        </div>
+        <div class="import-stat error">
+          <div class="stat-value">${errors}</div>
+          <div class="stat-label">Errors</div>
+        </div>
+        <div class="import-stat">
+          <div class="stat-value">${imported + duplicates}</div>
+          <div class="stat-label">Total Processed</div>
+        </div>
+      </div>
+      ${transactions && transactions.length > 0 ? `
+        <h4>Imported Transactions</h4>
+        <div class="transactions-list">
+          ${transactions.slice(0, 10).map(t => `
+            <div class="transaction-item ${t.type}">
+              <div class="transaction-icon">
+                <i class="fas ${t.type === 'income' ? 'fa-arrow-down' : 'fa-arrow-up'}"></i>
+              </div>
+              <div class="transaction-details">
+                <h4>${t.description}</h4>
+                <p>${t.category || 'Uncategorized'} • ${formatDate(t.date)}</p>
+              </div>
+              <div class="transaction-amount">${t.type === 'income' ? '+' : '-'}${formatCurrency(Math.abs(t.amount))}</div>
+            </div>
+          `).join('')}
+          ${transactions.length > 10 ? `<p style="text-align: center; color: #64748b;">And ${transactions.length - 10} more...</p>` : ''}
+        </div>
+      ` : ''}
+    `;
+    
+    showToast(`Successfully imported ${imported} transactions`, 'success');
+    
+    // Reset upload area
+    selectedFile = null;
+    document.getElementById('upload-area').innerHTML = `
+      <i class="fas fa-cloud-upload-alt"></i>
+      <p>Drag & drop your bank statement here</p>
+      <span>or click to browse (CSV, PDF)</span>
+    `;
+    
+  } catch (error) {
+    resultsDiv.innerHTML = `<p style="color: #dc2626;">Error: ${error.message}</p>`;
+    showToast('Import failed: ' + error.message, 'error');
+  }
+}
+
+// ============================================
+// Anomaly Detection Functions
+// ============================================
+async function loadAnomalies() {
+  const container = document.getElementById('anomaly-list');
+  const summaryCards = document.querySelectorAll('.anomaly-summary-card .count');
+  
+  container.innerHTML = '<p style="text-align: center;"><i class="fas fa-spinner fa-spin"></i> Detecting anomalies...</p>';
+  
+  try {
+    const data = await api('/anomalies');
+    
+    if (!data.anomalies || data.anomalies.length === 0) {
+      container.innerHTML = `
+        <div class="no-anomalies">
+          <i class="fas fa-check-circle"></i>
+          <h3>No Anomalies Detected</h3>
+          <p>Your recent spending patterns look normal.</p>
+        </div>
+      `;
+      summaryCards.forEach(card => card.textContent = '0');
+      return;
+    }
+    
+    // Count by type
+    const counts = {
+      unusual_amount: 0,
+      frequency: 0,
+      category_spike: 0,
+      timing: 0,
+      duplicate: 0
+    };
+    
+    data.anomalies.forEach(a => {
+      if (counts.hasOwnProperty(a.type)) {
+        counts[a.type]++;
+      }
+    });
+    
+    // Update summary cards
+    document.querySelector('.anomaly-summary-card.unusual-amount .count').textContent = counts.unusual_amount;
+    document.querySelector('.anomaly-summary-card.frequency .count').textContent = counts.frequency;
+    document.querySelector('.anomaly-summary-card.category-spike .count').textContent = counts.category_spike;
+    document.querySelector('.anomaly-summary-card.timing .count').textContent = counts.timing;
+    document.querySelector('.anomaly-summary-card.duplicate .count').textContent = counts.duplicate;
+    
+    // Render anomaly list
+    container.innerHTML = data.anomalies.map(anomaly => `
+      <div class="anomaly-item ${anomaly.type.replace('_', '-')}">
+        <div class="anomaly-icon">
+          <i class="fas ${getAnomalyIcon(anomaly.type)}"></i>
+        </div>
+        <div class="anomaly-info">
+          <h4>${anomaly.description || 'Unknown Transaction'}</h4>
+          <p>${anomaly.reason}</p>
+        </div>
+        <div class="anomaly-amount">${formatCurrency(anomaly.amount || 0)}</div>
+      </div>
+    `).join('');
+    
+  } catch (error) {
+    container.innerHTML = `<p style="color: #dc2626;">Error loading anomalies: ${error.message}</p>`;
+  }
+}
+
+function getAnomalyIcon(type) {
+  const icons = {
+    unusual_amount: 'fa-exclamation-triangle',
+    frequency: 'fa-clock',
+    category_spike: 'fa-chart-line',
+    timing: 'fa-calendar-exclamation',
+    duplicate: 'fa-copy'
+  };
+  return icons[type] || 'fa-question';
+}
+
+async function detectAnomalies() {
+  await loadAnomalies();
+}
+

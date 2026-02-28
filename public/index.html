@@ -88,6 +88,9 @@
         <button class="nav-btn" onclick="showSection('categories')">Categories</button>
         <button class="nav-btn" onclick="showSection('budgets')">Budgets</button>
         <button class="nav-btn" onclick="showSection('reports')">Reports</button>
+        <button class="nav-btn" onclick="showSection('ai')">🤖 AI Assistant</button>
+        <button class="nav-btn" onclick="showSection('import')">📥 Import</button>
+        <button class="nav-btn" onclick="showSection('anomalies')">⚠️ Anomalies</button>
       </nav>
 
       <!-- Dashboard Section -->
@@ -233,6 +236,140 @@
         </div>
 
         <div id="report-content" class="report-content"></div>
+      </section>
+
+      <!-- AI Assistant Section -->
+      <section id="ai-section" class="section hidden">
+        <div class="section-header">
+          <h2>🤖 AI Financial Assistant</h2>
+        </div>
+
+        <div class="ai-container">
+          <!-- AI Insights -->
+          <div class="ai-card">
+            <h3>📊 Spending Insights</h3>
+            <p class="ai-description">Get AI-powered analysis of your spending patterns</p>
+            <button onclick="getAIInsights()" class="btn btn-primary">Generate Insights</button>
+            <div id="ai-insights" class="ai-result"></div>
+          </div>
+
+          <!-- AI Report -->
+          <div class="ai-card">
+            <h3>📄 AI Financial Report</h3>
+            <p class="ai-description">Generate a detailed financial report</p>
+            <div class="form-group">
+              <label>Period</label>
+              <select id="ai-report-period">
+                <option value="weekly">Weekly</option>
+                <option value="monthly" selected>Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
+            <button onclick="getAIReport()" class="btn btn-primary">Generate Report</button>
+            <div id="ai-report" class="ai-result"></div>
+          </div>
+
+          <!-- Budget Recommendations -->
+          <div class="ai-card">
+            <h3>💡 Budget Recommendations</h3>
+            <p class="ai-description">Get personalized budget suggestions</p>
+            <button onclick="getAIBudgetRecommendations()" class="btn btn-primary">Get Recommendations</button>
+            <div id="ai-budget-recommendations" class="ai-result"></div>
+          </div>
+
+          <!-- AI Chat -->
+          <div class="ai-card ai-chat-card">
+            <h3>💬 Chat with AI</h3>
+            <p class="ai-description">Ask questions about your finances</p>
+            <div id="ai-chat-messages" class="chat-messages"></div>
+            <div class="chat-input-container">
+              <input type="text" id="ai-chat-input" placeholder="Ask about your finances..." onkeypress="handleChatKeypress(event)">
+              <button onclick="sendAIChat()" class="btn btn-primary">Send</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Import Section -->
+      <section id="import-section" class="section hidden">
+        <div class="section-header">
+          <h2>📥 Import Bank Statements</h2>
+        </div>
+
+        <div class="import-container">
+          <div class="import-card">
+            <h3>Upload Statement</h3>
+            <p class="import-description">
+              Import transactions from your bank statement (CSV or PDF format)
+            </p>
+            
+            <div class="upload-area" id="drop-zone" ondrop="handleFileDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+              <div class="upload-icon">📁</div>
+              <p>Drag and drop your file here or</p>
+              <input type="file" id="import-file" accept=".csv,.pdf" onchange="handleFileSelect(event)" hidden>
+              <button onclick="document.getElementById('import-file').click()" class="btn btn-outline">Browse Files</button>
+              <p class="file-types">Supported: CSV, PDF (max 10MB)</p>
+            </div>
+
+            <div id="selected-file" class="selected-file hidden">
+              <span id="file-name"></span>
+              <button onclick="clearSelectedFile()" class="btn-remove">&times;</button>
+            </div>
+
+            <div class="import-options">
+              <label class="checkbox-label">
+                <input type="checkbox" id="skip-duplicates" checked>
+                Skip duplicate transactions
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="auto-categorize" checked>
+                Auto-categorize using AI
+              </label>
+            </div>
+
+            <button onclick="importStatement()" class="btn btn-primary btn-full" id="import-btn" disabled>
+              Import Transactions
+            </button>
+
+            <div id="import-result" class="import-result hidden"></div>
+          </div>
+
+          <div class="import-card">
+            <h3>Import History</h3>
+            <div id="import-history"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Anomalies Section -->
+      <section id="anomalies-section" class="section hidden">
+        <div class="section-header">
+          <h2>⚠️ Anomaly Detection</h2>
+          <button onclick="detectAnomalies()" class="btn btn-primary">🔍 Scan for Anomalies</button>
+        </div>
+
+        <div class="anomalies-container">
+          <!-- Summary Card -->
+          <div id="anomaly-summary" class="anomaly-summary-card">
+            <p>Click "Scan for Anomalies" to analyze your transactions</p>
+          </div>
+
+          <!-- Spending Velocity -->
+          <div class="velocity-card">
+            <h3>📈 Spending Velocity</h3>
+            <div id="spending-velocity">
+              <p>Loading spending velocity...</p>
+            </div>
+          </div>
+
+          <!-- Anomalies List -->
+          <div class="anomalies-list-card">
+            <h3>Detected Anomalies</h3>
+            <div id="anomalies-list">
+              <p class="no-data">No anomalies detected yet. Run a scan to check.</p>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
 

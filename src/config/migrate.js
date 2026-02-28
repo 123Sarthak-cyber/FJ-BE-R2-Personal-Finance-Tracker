@@ -5,6 +5,9 @@ const migrations = `
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Enable pg_trgm for similarity matching (for duplicate detection)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -45,7 +48,9 @@ CREATE TABLE IF NOT EXISTS transactions (
   description TEXT,
   date DATE NOT NULL DEFAULT CURRENT_DATE,
   is_refund BOOLEAN DEFAULT false,
+  original_transaction_id UUID REFERENCES transactions(id) ON DELETE SET NULL,
   receipt_url VARCHAR(500),
+  import_source VARCHAR(50) DEFAULT 'manual',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -96,6 +101,24 @@ CREATE INDEX IF NOT EXISTS idx_transactions_type ON transactions(type);
 CREATE INDEX IF NOT EXISTS idx_categories_user_id ON categories(user_id);
 CREATE INDEX IF NOT EXISTS idx_budgets_user_id ON budgets(user_id);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+
+-- Add import_source column if not exists (for bank statement imports)
+DO $$ 
+BEGIN 
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='import_source') THEN
+    ALTER TABLE transactions ADD COLUMN import_source VARCHAR(50) DEFAULT 'manual';
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_transactions_import ON transactions(import_source);
+
+-- Index for text similarity search on descriptions (if pg_trgm available)
+DO $$ 
+BEGIN 
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_trgm') THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_transactions_description_trgm ON transactions USING gin (description gin_trgm_ops)';
+  END IF;
+END $$;
 
 -- Function to update timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
